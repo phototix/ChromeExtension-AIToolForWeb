@@ -42,8 +42,19 @@ async function setAll(obj) {
 }
 
 async function getDefaults() {
-  const data = await chrome.storage.sync.get(Object.keys(DEFAULTS));
-  return { ...DEFAULTS, ...data };
+  const keys = Object.values(STORAGE_KEYS).filter(k => k !== 'taskQueue');
+  const data = await chrome.storage.sync.get(keys);
+  return {
+    apiKey: data.apiKey || null,
+    apiProvider: data.apiProvider || DEFAULTS.API_PROVIDER,
+    model: data.model || DEFAULTS.MODEL,
+    systemPrompt: data.systemPrompt || DEFAULTS.SYSTEM_PROMPT,
+    maxSteps: data.maxSteps ?? DEFAULTS.MAX_STEPS,
+    actionDelay: data.actionDelay ?? DEFAULTS.ACTION_DELAY,
+    retryCount: data.retryCount ?? DEFAULTS.RETRY_COUNT,
+    confirmRequired: data.confirmRequired ?? DEFAULTS.CONFIRM_REQUIRED,
+    theme: data.theme || DEFAULTS.THEME
+  };
 }
 
 async function saveTaskQueue(queue) {
