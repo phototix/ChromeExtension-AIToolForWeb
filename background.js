@@ -166,6 +166,16 @@ async function executeAction(tabId, step) {
     const result = await chrome.tabs.sendMessage(tabId, { action: step.action, ...step });
     return { success: true, data: result };
   } catch (err) {
+    if (err.message.includes('Receiving end does not exist')) {
+      try {
+        await chrome.scripting.executeScript({ target: { tabId }, files: ['content.js'] });
+        await new Promise(r => setTimeout(r, 300));
+        const result = await chrome.tabs.sendMessage(tabId, { action: step.action, ...step });
+        return { success: true, data: result };
+      } catch (e2) {
+        return { success: false, error: e2.message };
+      }
+    }
     return { success: false, error: err.message };
   }
 }
