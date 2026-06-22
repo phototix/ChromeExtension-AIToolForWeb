@@ -5,8 +5,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   fields.forEach(f => {
     const el = document.getElementById(f);
     if (!el) return;
-    if (el.type === 'checkbox') el.checked = data[f] ?? defaults[f];
-    else el.value = data[f] ?? defaults[f] ?? '';
+    if (el.type === 'checkbox') el.checked = data[f] ?? DEFAULTS[f];
+    else el.value = data[f] ?? DEFAULTS[f] ?? '';
   });
 });
 

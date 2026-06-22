@@ -1,3 +1,5 @@
+importScripts('common/storage.js', 'common/messages.js', 'common/api.js', 'common/prompts.js');
+
 let panelPorts = {};
 let taskQueue = [];
 let isExecuting = false;
