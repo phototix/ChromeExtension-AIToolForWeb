@@ -122,6 +122,24 @@ async function executeNextTask(tabId, port) {
 
     task.status = 'done';
     safePost(port, { type: MSG.TASK_COMPLETE, taskId: task.id, steps: task.steps });
+
+    // Auto-summarize if there are read results
+    const readResults = task.steps.filter(s => s.action === 'read' && s.result?.success && s.result.data).map(s => s.result.data?.data || s.result.data).filter(Boolean);
+    if (readResults.length > 0) {
+      const collectedText = readResults.join('\n\n---\n\n').slice(0, 50000);
+      safePost(port, { type: MSG.TASK_PROGRESS, taskId: task.id, step: 'summary', message: 'Generating summary...' });
+      try {
+        const settings = await getDefaults();
+        const summary = await callAI([
+          { role: 'system', content: 'You are a research analyst. Summarize the following collected data concisely, highlighting key findings, trends, and insights. Format as plain text paragraphs.' },
+          { role: 'user', content: `Research task: ${task.text}\n\nCollected data:\n${collectedText}` }
+        ], settings);
+        safePost(port, { type: MSG.TASK_PROGRESS, taskId: task.id, step: 'summary', result: { success: true, data: summary, isSummary: true } });
+        task.summary = summary;
+      } catch (e) {
+        safePost(port, { type: MSG.TASK_PROGRESS, taskId: task.id, step: 'summary', result: { success: false, error: e.message } });
+      }
+    }
   } catch (err) {
     task.status = err.message === 'Cancelled' ? 'cancelled' : 'failed';
     safePost(port, { type: MSG.TASK_ERROR, taskId: task.id, error: err.message });
@@ -158,6 +176,19 @@ async function executeAction(tabId, step) {
     try {
       const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
       return { success: true, data: 'screenshot captured', screenshotUrl: dataUrl };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+  if (step.action === 'summarize') {
+    try {
+      const ctx = step.context || step.value || '';
+      const settings = await getDefaults();
+      const summary = await callAI([
+        { role: 'system', content: 'You are a research analyst. Summarize the following collected data concisely, highlighting key findings, trends, and insights.' },
+        { role: 'user', content: ctx }
+      ], settings);
+      return { success: true, data: summary };
     } catch (e) {
       return { success: false, error: e.message };
     }

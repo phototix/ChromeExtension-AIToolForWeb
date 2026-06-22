@@ -83,6 +83,12 @@ function addLogEntry(msg) {
     entry.classList.add('success');
     entry.innerHTML = `<span class="action">📷 Screenshot captured</span>
       <img class="screenshot-thumb" src="${msg.result.screenshotUrl}" onclick="showScreenshot(this.src)">`;
+  } else if (msg.result && msg.result.isSummary) {
+    entry.classList.add('success');
+    entry.style.borderLeftColor = '#cba6f7';
+    entry.style.background = '#1e1e2e';
+    entry.innerHTML = `<span class="action" style="font-size:14px;color:#cba6f7">📋 Research Summary</span>
+      <div style="margin-top:6px;font-size:12px;line-height:1.5;white-space:pre-wrap;color:#cdd6f4">${msg.result.data}</div>`;
   } else if (msg.result) {
     entry.classList.add(msg.result.success !== false ? 'success' : 'failed');
     entry.innerHTML = `<span class="action">${msg.message || (typeof msg.result.data === 'object' ? JSON.stringify(msg.result.data) : msg.result.data) || (msg.result.success ? 'done' : 'failed')}</span>
