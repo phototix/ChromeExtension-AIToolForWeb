@@ -10,7 +10,7 @@ loadTaskQueue().then(q => { taskQueue = q; });
 
 chrome.runtime.onConnect.addListener(port => {
   if (port.name.startsWith('panel-')) {
-    const tabId = port.name.replace('panel-', '');
+    const tabId = parseInt(port.name.replace('panel-', ''), 10);
     panelPorts[tabId] = port;
     port.onMessage.addListener(msg => handlePanelMessage(msg, tabId, port));
     port.onDisconnect.addListener(() => { delete panelPorts[tabId]; });
