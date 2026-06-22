@@ -1,56 +1,67 @@
-const tabId = chrome.devtools.inspectedWindow.tabId;
-const port = chrome.runtime.connect({ name: `panel-${tabId}` });
-let currentTaskId = null;
+let tabId, port, currentTaskId = null;
 
-port.onMessage.addListener(msg => {
-  switch (msg.type) {
-    case 'task-progress':
-      addLogEntry(msg);
-      break;
-    case 'task-complete':
-      addLogEntry({ message: '✅ Task complete', result: { steps: msg.steps } });
-      currentTaskId = null;
-      break;
-    case 'task-error':
-      addLogEntry({ message: `❌ Error: ${msg.error}`, error: true });
-      currentTaskId = null;
-      break;
-    case 'plan-ready':
-      renderPlan(msg.plan, msg.reasoning);
-      break;
-    case 'queue-update':
-      renderQueue(msg.queue);
-      break;
-    case 'status-update':
-      updateControls(msg.executing, msg.currentTaskId);
-      break;
+function init() {
+  tabId = chrome.devtools.inspectedWindow.tabId;
+  try {
+    port = chrome.runtime.connect({ name: `panel-${tabId}` });
+    port.onMessage.addListener(msg => {
+      switch (msg.type) {
+        case 'task-progress':
+          addLogEntry(msg);
+          break;
+        case 'task-complete':
+          addLogEntry({ message: '✅ Task complete', result: { steps: msg.steps } });
+          currentTaskId = null;
+          break;
+        case 'task-error':
+          addLogEntry({ message: `❌ Error: ${msg.error}`, error: true });
+          currentTaskId = null;
+          break;
+        case 'plan-ready':
+          renderPlan(msg.plan, msg.reasoning);
+          break;
+        case 'queue-update':
+          renderQueue(msg.queue);
+          break;
+        case 'status-update':
+          updateControls(msg.executing, msg.currentTaskId);
+          break;
+      }
+    });
+  } catch (e) {
+    addLogEntry({ message: `⚠ Connection error: ${e.message}`, error: true });
   }
-});
 
-document.getElementById('btnAddTask').addEventListener('click', () => {
-  const input = document.getElementById('taskInput');
-  const task = input.value.trim();
-  if (!task) return;
-  port.postMessage({ type: 'execute-task', task });
-  input.value = '';
-});
+  const $ = id => document.getElementById(id);
+  const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
 
-document.getElementById('btnExecute').addEventListener('click', () => {
-  port.postMessage({ type: 'resume-task' });
-});
+  on('btnAddTask', 'click', () => {
+    const input = $('taskInput');
+    if (!input) return;
+    const task = input.value.trim();
+    if (!task) return;
+    if (port) port.postMessage({ type: 'execute-task', task });
+    input.value = '';
+  });
 
-document.getElementById('btnPause').addEventListener('click', () => {
-  port.postMessage({ type: 'pause-task' });
-});
+  on('btnExecute', 'click', () => {
+    if (port) port.postMessage({ type: 'resume-task' });
+  });
 
-document.getElementById('btnCancel').addEventListener('click', () => {
-  port.postMessage({ type: 'cancel-task' });
-  document.getElementById('actionLog').innerHTML = '';
-  document.getElementById('planView').innerHTML = '<p class="hint">Cancelled.</p>';
-});
+  on('btnPause', 'click', () => {
+    if (port) port.postMessage({ type: 'pause-task' });
+  });
+
+  on('btnCancel', 'click', () => {
+    if (port) port.postMessage({ type: 'cancel-task' });
+    const log = $('actionLog'); if (log) log.innerHTML = '';
+    const plan = $('planView'); if (plan) plan.innerHTML = '<p class="hint">Cancelled.</p>';
+  });
+}
 
 function addLogEntry(msg) {
   const log = document.getElementById('actionLog');
+  if (!log) return;
   const entry = document.createElement('div');
   entry.className = 'log-entry';
 
@@ -76,6 +87,7 @@ function addLogEntry(msg) {
 
 function renderPlan(plan, reasoning) {
   const view = document.getElementById('planView');
+  if (!view) return;
   view.innerHTML = '';
   if (reasoning) {
     const r = document.createElement('p');
@@ -94,6 +106,7 @@ function renderPlan(plan, reasoning) {
 
 function renderQueue(queue) {
   const list = document.getElementById('taskList');
+  if (!list) return;
   list.innerHTML = '';
   queue.forEach(task => {
     const li = document.createElement('li');
@@ -108,7 +121,13 @@ function renderQueue(queue) {
 
 function updateControls(executing, taskId) {
   currentTaskId = taskId;
-  document.getElementById('btnExecute').disabled = executing;
-  document.getElementById('btnPause').disabled = !executing;
-  document.getElementById('btnCancel').disabled = !executing && !taskId;
+  const $ = id => document.getElementById(id);
+  const btnExec = $('btnExecute');
+  const btnPause = $('btnPause');
+  const btnCancel = $('btnCancel');
+  if (btnExec) btnExec.disabled = executing;
+  if (btnPause) btnPause.disabled = !executing;
+  if (btnCancel) btnCancel.disabled = !executing && !taskId;
 }
+
+document.addEventListener('DOMContentLoaded', init);
