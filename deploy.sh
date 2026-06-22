@@ -3,6 +3,7 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 APK_SRC="$PROJECT_DIR/android-apk-dev/app/build/outputs/apk/debug/app-debug.apk"
+CE_DIR="$PROJECT_DIR"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 APK_NAME="${TIMESTAMP}_AIToolForWeb-debug.apk"
 
