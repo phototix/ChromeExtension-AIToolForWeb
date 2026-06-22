@@ -73,7 +73,8 @@ async function executeNextTask(tabId, port) {
     const structure = await getPageStructure(tabId);
     const prompt = buildPlanPrompt(task.text, structure);
     const planText = await callAI(prompt, settings);
-    const parsed = JSON.parse(planText);
+    const cleaned = planText.replace(/^```(?:json)?\s*/, '').replace(/\s*```\s*$/, '').trim();
+    const parsed = JSON.parse(cleaned);
 
     if (!parsed.plan || parsed.plan.length === 0) throw new Error('AI returned empty plan');
 
@@ -107,7 +108,8 @@ async function executeNextTask(tabId, port) {
         if (i < parsed.plan.length - 1) {
           const refinePrompt = buildRefinePrompt(task.text, JSON.stringify(result), parsed.plan.slice(i));
           const refinedText = await callAI(refinePrompt, settings);
-          const refined = JSON.parse(refinedText);
+          const refinedText2 = refinedText.replace(/^```(?:json)?\s*/, '').replace(/\s*```\s*$/, '').trim();
+          const refined = JSON.parse(refinedText2);
           if (refined.plan && refined.plan.length > 0) {
             parsed.plan = [...parsed.plan.slice(0, i + 1), ...refined.plan];
             port.postMessage({ type: MSG.PLAN_READY, taskId: task.id, plan: parsed.plan });
