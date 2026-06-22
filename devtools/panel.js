@@ -58,7 +58,7 @@ function init() {
     input.value = '';
   });
 
-  on('btnExecute', 'click', () => post({ type: 'resume-task' }));
+  on('btnExecute', 'click', () => { post({ type: 'resume-task' }); post({ type: 'approve-step' }); });
   on('btnPause', 'click', () => post({ type: 'pause-task' }));
 
   on('btnCancel', 'click', () => {

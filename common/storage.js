@@ -20,7 +20,7 @@ Respond only with valid JSON: { "plan": [...], "reasoning": "..." }`,
   MAX_STEPS: 20,
   ACTION_DELAY: 500,
   RETRY_COUNT: 2,
-  CONFIRM_REQUIRED: true,
+  CONFIRM_REQUIRED: false,
   THEME: 'dark'
 };
 
