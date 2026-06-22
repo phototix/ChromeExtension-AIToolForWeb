@@ -79,6 +79,10 @@ function addLogEntry(msg) {
     entry.innerHTML = `<span class="action">${msg.action.action}</span>
       <span class="desc">${msg.action.description || msg.action.selector || ''}</span>
       <div class="result">Step ${msg.step}/${msg.total}</div>`;
+  } else if (msg.result && msg.result.screenshotUrl) {
+    entry.classList.add('success');
+    entry.innerHTML = `<span class="action">📷 Screenshot captured</span>
+      <img class="screenshot-thumb" src="${msg.result.screenshotUrl}" onclick="showScreenshot(this.src)">`;
   } else if (msg.result) {
     entry.classList.add(msg.result.success !== false ? 'success' : 'failed');
     entry.innerHTML = `<span class="action">${msg.message || msg.result.data || (msg.result.success ? 'done' : 'failed')}</span>
@@ -93,6 +97,18 @@ function addLogEntry(msg) {
   log.appendChild(entry);
   log.scrollTop = log.scrollHeight;
 }
+
+function showScreenshot(src) {
+  const overlay = document.getElementById('screenshotOverlay');
+  const img = document.getElementById('screenshotFull');
+  img.src = src;
+  overlay.style.display = 'flex';
+}
+
+document.addEventListener('click', e => {
+  const overlay = document.getElementById('screenshotOverlay');
+  if (e.target === overlay) overlay.style.display = 'none';
+});
 
 function renderPlan(plan, reasoning) {
   const view = document.getElementById('planView');

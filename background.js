@@ -157,7 +157,7 @@ async function executeAction(tabId, step) {
   if (step.action === 'screenshot') {
     try {
       const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-      return { success: true, data: 'screenshot captured' };
+      return { success: true, data: 'screenshot captured', screenshotUrl: dataUrl };
     } catch (e) {
       return { success: false, error: e.message };
     }
