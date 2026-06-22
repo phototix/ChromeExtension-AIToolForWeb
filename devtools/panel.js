@@ -1,6 +1,6 @@
 let tabId, port, currentTaskId = null;
 
-function init() {
+function connect() {
   tabId = chrome.devtools.inspectedWindow.tabId;
   try {
     port = chrome.runtime.connect({ name: `panel-${tabId}` });
@@ -28,10 +28,24 @@ function init() {
           break;
       }
     });
+    port.onDisconnect.addListener(() => {
+      if (chrome.runtime.lastError) { /* ignore */ }
+      port = null;
+      setTimeout(connect, 1000);
+    });
   } catch (e) {
-    addLogEntry({ message: `⚠ Connection error: ${e.message}`, error: true });
+    port = null;
+    setTimeout(connect, 1000);
   }
+}
 
+function post(msg) {
+  if (!port) { addLogEntry({ message: '⚠ Disconnected. Reconnecting...' }); return; }
+  try { port.postMessage(msg); } catch (e) { port = null; setTimeout(connect, 1000); }
+}
+
+function init() {
+  connect();
   const $ = id => document.getElementById(id);
   const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
 
@@ -40,20 +54,15 @@ function init() {
     if (!input) return;
     const task = input.value.trim();
     if (!task) return;
-    if (port) port.postMessage({ type: 'execute-task', task });
+    post({ type: 'execute-task', task });
     input.value = '';
   });
 
-  on('btnExecute', 'click', () => {
-    if (port) port.postMessage({ type: 'resume-task' });
-  });
-
-  on('btnPause', 'click', () => {
-    if (port) port.postMessage({ type: 'pause-task' });
-  });
+  on('btnExecute', 'click', () => post({ type: 'resume-task' }));
+  on('btnPause', 'click', () => post({ type: 'pause-task' }));
 
   on('btnCancel', 'click', () => {
-    if (port) port.postMessage({ type: 'cancel-task' });
+    post({ type: 'cancel-task' });
     const log = $('actionLog'); if (log) log.innerHTML = '';
     const plan = $('planView'); if (plan) plan.innerHTML = '<p class="hint">Cancelled.</p>';
   });

@@ -1,20 +1,27 @@
 importScripts('common/storage.js', 'common/messages.js', 'common/api.js', 'common/prompts.js');
 
+self.onerror = msg => console.error('SW error:', msg);
+self.addEventListener('unhandledrejection', e => { console.error('SW unhandled:', e.reason); e.preventDefault(); });
+
 let panelPorts = {};
 let taskQueue = [];
 let isExecuting = false;
 let currentTaskId = null;
 let abortController = null;
+let pendingStepResolve = null;
+
+setInterval(() => {
+  if (taskQueue.length > 0 || isExecuting) chrome.storage.local.get('keepalive', () => {});
+}, 20000);
 
 loadTaskQueue().then(q => { taskQueue = q; });
 
 chrome.runtime.onConnect.addListener(port => {
-  if (port.name.startsWith('panel-')) {
-    const tabId = parseInt(port.name.replace('panel-', ''), 10);
-    panelPorts[tabId] = port;
-    port.onMessage.addListener(msg => handlePanelMessage(msg, tabId, port));
-    port.onDisconnect.addListener(() => { delete panelPorts[tabId]; });
-  }
+  if (!port.name.startsWith('panel-')) return;
+  const tabId = parseInt(port.name.replace('panel-', ''), 10);
+  panelPorts[tabId] = port;
+  port.onMessage.addListener(msg => handlePanelMessage(msg, tabId, port));
+  port.onDisconnect.addListener(() => { delete panelPorts[tabId]; });
 });
 
 async function handlePanelMessage(msg, tabId, port) {
@@ -35,10 +42,10 @@ async function handlePanelMessage(msg, tabId, port) {
       if (taskQueue.length > 0 && !isExecuting) executeNextTask(tabId, port);
       break;
     case MSG.GET_STATUS:
-      port.postMessage({ type: MSG.STATUS_UPDATE, executing: isExecuting, currentTaskId });
+      safePost(port, { type: MSG.STATUS_UPDATE, executing: isExecuting, currentTaskId });
       break;
     case MSG.GET_TASK_QUEUE:
-      port.postMessage({ type: MSG.QUEUE_UPDATE, queue: taskQueue });
+      safePost(port, { type: MSG.QUEUE_UPDATE, queue: taskQueue });
       break;
     case MSG.APPROVE_STEP:
       if (pendingStepResolve) { pendingStepResolve(true); pendingStepResolve = null; }
@@ -48,8 +55,6 @@ async function handlePanelMessage(msg, tabId, port) {
       break;
   }
 }
-
-let pendingStepResolve = null;
 
 async function addTask(task) {
   taskQueue.push(task);
@@ -66,21 +71,19 @@ async function executeNextTask(tabId, port) {
   const task = taskQueue[0];
   task.status = 'in-progress';
   broadcastQueue();
-  port.postMessage({ type: MSG.TASK_PROGRESS, taskId: task.id, step: 'planning', message: 'Generating action plan...' });
+  safePost(port, { type: MSG.TASK_PROGRESS, taskId: task.id, step: 'planning', message: 'Generating action plan...' });
 
   try {
     const settings = await getDefaults();
     const structure = await getPageStructure(tabId);
-    const prompt = buildPlanPrompt(task.text, structure);
-    const planText = await callAI(prompt, settings);
-    const cleaned = planText.replace(/^```(?:json)?\s*/, '').replace(/\s*```\s*$/, '').trim();
-    const parsed = JSON.parse(cleaned);
+    const planText = await callAI(buildPlanPrompt(task.text, structure), settings);
+    const parsed = JSON.parse(planText.replace(/^```(?:json)?\s*/, '').replace(/\s*```\s*$/, '').trim());
 
     if (!parsed.plan || parsed.plan.length === 0) throw new Error('AI returned empty plan');
 
     task.plan = parsed.plan;
     task.reasoning = parsed.reasoning;
-    port.postMessage({ type: MSG.PLAN_READY, taskId: task.id, plan: parsed.plan, reasoning: parsed.reasoning });
+    safePost(port, { type: MSG.PLAN_READY, taskId: task.id, plan: parsed.plan, reasoning: parsed.reasoning });
 
     if (settings.confirmRequired) {
       await new Promise(resolve => { pendingStepResolve = resolve; });
@@ -98,33 +101,30 @@ async function executeNextTask(tabId, port) {
       }
 
       const step = parsed.plan[i];
-      port.postMessage({ type: MSG.TASK_PROGRESS, taskId: task.id, step: i + 1, total: parsed.plan.length, action: step, message: step.description });
-
+      safePost(port, { type: MSG.TASK_PROGRESS, taskId: task.id, step: i + 1, total: parsed.plan.length, action: step, message: step.description });
       const result = await executeAction(tabId, step);
       task.steps.push({ ...step, result, status: result.success ? 'done' : 'failed' });
-      port.postMessage({ type: MSG.TASK_PROGRESS, taskId: task.id, step: i + 1, total: parsed.plan.length, result });
+      safePost(port, { type: MSG.TASK_PROGRESS, taskId: task.id, step: i + 1, total: parsed.plan.length, result });
 
-      if (!result.success) {
-        if (i < parsed.plan.length - 1) {
-          const refinePrompt = buildRefinePrompt(task.text, JSON.stringify(result), parsed.plan.slice(i));
-          const refinedText = await callAI(refinePrompt, settings);
-          const refinedText2 = refinedText.replace(/^```(?:json)?\s*/, '').replace(/\s*```\s*$/, '').trim();
-          const refined = JSON.parse(refinedText2);
+      if (!result.success && i < parsed.plan.length - 1) {
+        try {
+          const refinedText = await callAI(buildRefinePrompt(task.text, JSON.stringify(result), parsed.plan.slice(i)), settings);
+          const refined = JSON.parse(refinedText.replace(/^```(?:json)?\s*/, '').replace(/\s*```\s*$/, '').trim());
           if (refined.plan && refined.plan.length > 0) {
             parsed.plan = [...parsed.plan.slice(0, i + 1), ...refined.plan];
-            port.postMessage({ type: MSG.PLAN_READY, taskId: task.id, plan: parsed.plan });
+            safePost(port, { type: MSG.PLAN_READY, taskId: task.id, plan: parsed.plan });
           }
-        }
+        } catch (_) { /* refinement failed, continue with remaining plan */ }
       }
 
       if (settings.actionDelay > 0) await new Promise(r => setTimeout(r, settings.actionDelay));
     }
 
     task.status = 'done';
-    port.postMessage({ type: MSG.TASK_COMPLETE, taskId: task.id, steps: task.steps });
+    safePost(port, { type: MSG.TASK_COMPLETE, taskId: task.id, steps: task.steps });
   } catch (err) {
     task.status = err.message === 'Cancelled' ? 'cancelled' : 'failed';
-    port.postMessage({ type: MSG.TASK_ERROR, taskId: task.id, error: err.message });
+    safePost(port, { type: MSG.TASK_ERROR, taskId: task.id, error: err.message });
   }
 
   taskQueue.shift();
@@ -157,8 +157,10 @@ async function executeAction(tabId, step) {
   }
 }
 
+function safePost(port, msg) {
+  try { port.postMessage(msg); } catch (_) { /* port disconnected */ }
+}
+
 function broadcastQueue() {
-  Object.values(panelPorts).forEach(port => {
-    port.postMessage({ type: MSG.QUEUE_UPDATE, queue: taskQueue });
-  });
+  Object.values(panelPorts).forEach(p => safePost(p, { type: MSG.QUEUE_UPDATE, queue: taskQueue }));
 }
