@@ -149,6 +149,19 @@ async function getPageStructure(tabId) {
 }
 
 async function executeAction(tabId, step) {
+  if (step.action === 'wait') {
+    const ms = step.ms || (step.value ? parseInt(step.value) : 2000);
+    await new Promise(r => setTimeout(r, ms));
+    return { success: true, data: `waited ${ms}ms` };
+  }
+  if (step.action === 'screenshot') {
+    try {
+      const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+      return { success: true, data: 'screenshot captured' };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
   try {
     const result = await chrome.tabs.sendMessage(tabId, { action: step.action, ...step });
     return { success: true, data: result };

@@ -28,6 +28,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       sendResponse(doRunJS(msg.code));
       break;
     case 'wait':
+      sendResponse({ success: true, data: 'wait handled in background' });
+      break;
+    case 'screenshot':
+      sendResponse(doScreenshot());
       break;
   }
   return true;
@@ -92,22 +96,22 @@ function tagWithPath(el) {
 
 function doClick(selector) {
   try {
-    const el = findElement(selector) || document.querySelector(selector);
-    if (!el) return { success: false, error: 'Element not found' };
+    const el = document.querySelector(selector);
+    if (!el) return { success: false, error: 'Element not found: ' + selector };
     el.click();
-    return { success: true };
+    return { success: true, data: 'clicked ' + selector };
   } catch (e) { return { success: false, error: e.message }; }
 }
 
 function doType(selector, value) {
   try {
     const el = document.querySelector(selector);
-    if (!el) return { success: false, error: 'Element not found' };
+    if (!el) return { success: false, error: 'Element not found: ' + selector };
     el.focus();
     el.value = value;
     el.dispatchEvent(new Event('input', { bubbles: true }));
     el.dispatchEvent(new Event('change', { bubbles: true }));
-    return { success: true };
+    return { success: true, data: 'typed into ' + selector };
   } catch (e) { return { success: false, error: e.message }; }
 }
 
@@ -140,7 +144,7 @@ function doRead(selector) {
 function doModify(selector, property, value) {
   try {
     const el = document.querySelector(selector);
-    if (!el) return { success: false, error: 'Element not found' };
+    if (!el) return { success: false, error: 'Element not found: ' + selector };
     if (property === 'innerHTML') { el.innerHTML = value; return { success: true }; }
     if (property === 'style') { el.style.cssText = value; return { success: true }; }
     if (property === 'attr') {
@@ -161,6 +165,14 @@ function doHighlight(selector) {
     el.style.outlineOffset = '2px';
     setTimeout(() => { el.style.outline = ''; el.style.outlineOffset = ''; }, 2000);
     return { success: true };
+  } catch (e) { return { success: false, error: e.message }; }
+}
+
+function doScreenshot() {
+  try {
+    const el = document.documentElement || document.body;
+    const rect = el.getBoundingClientRect();
+    return { success: true, data: { width: rect.width, height: rect.height, url: location.href } };
   } catch (e) { return { success: false, error: e.message }; }
 }
 

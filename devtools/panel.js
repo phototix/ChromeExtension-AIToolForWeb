@@ -81,7 +81,7 @@ function addLogEntry(msg) {
       <div class="result">Step ${msg.step}/${msg.total}</div>`;
   } else if (msg.result) {
     entry.classList.add(msg.result.success !== false ? 'success' : 'failed');
-    entry.innerHTML = `<span class="action">${msg.message}</span>
+    entry.innerHTML = `<span class="action">${msg.message || msg.result.data || (msg.result.success ? 'done' : 'failed')}</span>
       <div class="result">${msg.result.error ? 'Error: ' + msg.result.error : ''}</div>`;
   } else if (msg.error) {
     entry.classList.add('failed');
