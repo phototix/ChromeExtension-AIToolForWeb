@@ -85,7 +85,7 @@ function addLogEntry(msg) {
       <img class="screenshot-thumb" src="${msg.result.screenshotUrl}" onclick="showScreenshot(this.src)">`;
   } else if (msg.result) {
     entry.classList.add(msg.result.success !== false ? 'success' : 'failed');
-    entry.innerHTML = `<span class="action">${msg.message || msg.result.data || (msg.result.success ? 'done' : 'failed')}</span>
+    entry.innerHTML = `<span class="action">${msg.message || (typeof msg.result.data === 'object' ? JSON.stringify(msg.result.data) : msg.result.data) || (msg.result.success ? 'done' : 'failed')}</span>
       <div class="result">${msg.result.error ? 'Error: ' + msg.result.error : ''}</div>`;
   } else if (msg.error) {
     entry.classList.add('failed');
