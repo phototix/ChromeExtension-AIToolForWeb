@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>AI Workspace</h1>
+      <div class="controls">
+        <button id="btnExecute" class="primary" title="Execute next task">▶ Execute</button>
+        <button id="btnPause" title="Pause execution">⏸ Pause</button>
+        <button id="btnCancel" title="Cancel execution">⏹ Cancel</button>
+      </div>
+    </header>
+
+    <div class="main">
+      <aside class="sidebar">
+        <h3>Task Queue</h3>
+        <div class="task-input">
+          <textarea id="taskInput" rows="3" placeholder="Describe a task for the AI..."></textarea>
+          <button id="btnAddTask">Add Task</button>
+        </div>
+        <ul id="taskList"></ul>
+      </aside>
+
+      <section class="content">
+        <h3>Action Log</h3>
+        <div id="actionLog" class="log"></div>
+      </section>
+
+      <aside class="plan-panel">
+        <h3>Current Plan</h3>
+        <div id="planView">
+          <p class="hint">Add a task to generate a plan.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <script src="panel.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Android
+android-apk-dev/.gradle/
+android-apk-dev/build/
+android-apk-dev/app/build/
+android-apk-dev/local.properties
+android-apk-dev/gradle/wrapper/gradle-wrapper.jar
+*.apk
+*.aab
+
+# macOS
+.DS_Store
+
+# IDE
+*.iml
+.idea/
+.vscode/

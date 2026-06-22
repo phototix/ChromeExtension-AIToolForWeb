@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <h1>AI Tool For Web — Settings</h1>
+
+    <section>
+      <h2>AI Provider</h2>
+      <label>Provider
+        <select id="apiProvider">
+          <option value="openai">OpenAI</option>
+          <option value="anthropic">Anthropic</option>
+        </select>
+      </label>
+      <label>API Key
+        <input type="password" id="apiKey" placeholder="sk-...">
+        <button id="btnTestKey" class="small">Test</button>
+      </label>
+      <label>Model
+        <input type="text" id="model" placeholder="gpt-4o">
+      </label>
+    </section>
+
+    <section>
+      <h2>System Prompt</h2>
+      <label>Instructions for the AI agent
+        <textarea id="systemPrompt" rows="8"></textarea>
+      </label>
+    </section>
+
+    <section>
+      <h2>Workspace Settings</h2>
+      <label>Max steps per plan <input type="number" id="maxSteps" min="1" max="100"></label>
+      <label>Action delay (ms) <input type="number" id="actionDelay" min="0" max="10000" step="100"></label>
+      <label>Retry count <input type="number" id="retryCount" min="0" max="5"></label>
+      <label><input type="checkbox" id="confirmRequired"> Require confirmation before execution</label>
+    </section>
+
+    <section>
+      <h2>Appearance</h2>
+      <label>Theme
+        <select id="theme">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+        </select>
+      </label>
+    </section>
+
+    <div class="actions">
+      <button id="btnSave" class="primary">Save Settings</button>
+      <span id="saveStatus"></span>
+    </div>
+  </div>
+  <script src="options.js"></script>
+</body>
+</html>
